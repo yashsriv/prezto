@@ -237,21 +237,26 @@ function battery_level_ssh() {
   echo %{$fg[$color]%}$(battery_level)%%
 }
 function battery_is_charging() {
-  if [[ $(acpi 2&>/dev/null | grep -c '^Battery.*Discharging') -gt 0 ]]; then
-    symbol=''
-    if [ $(battery_level) -ge 40 ]; then
-      color=green
-      symbol="\u2615"
-    elif [ $(battery_level) -ge 20 ]; then
-      color=yellow
-      symbol="\u231B"
+  if (( $+commands[acpi] )); then
+    if [[ $(acpi 2&>/dev/null | grep -c '^Battery.*Discharging') -gt 0 ]]; then
+      symbol=''
+      if [ $(battery_level) -ge 40 ]; then
+        color=green
+        symbol="\u2615"
+      elif [ $(battery_level) -ge 20 ]; then
+        color=yellow
+        symbol="\u231B"
+      else
+        color=red
+        symbol="\u26A0"
+      fi
     else
-      color=red
-      symbol="\u26A0"
+      symbol="\u26A1"
+      color=magenta
     fi
   else
-    symbol="\u26A1"
-    color=magenta
+    color=green
+    symbol="\u2615"
   fi
   echo %{$fg_bold[$color]%}$symbol
 }
