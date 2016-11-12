@@ -16,10 +16,14 @@
 
 # Execute code only if STDERR is bound to a TTY.
 [[ -o INTERACTIVE && -t 2 ]] && {
-
   # Print a random, hopefully interesting, adage.
   if (( $+commands[fortune] )); then
-    fortune -s
+    if [[ -t 0 || -t 1 ]]; then
+      if (( $+commands[cowsay] )); then
+        fortune 50% all 50% hackcave | cowsay -n
+      else
+        fortune 50% all 50% hackcave
+      fi
     print
   fi
 
