@@ -86,7 +86,7 @@ _connection() {
 }
 prompt_context() {
   HOST=""
-  HOST="($(hostname))"
+  #HOST="($(hostname))"
   [[ -r /etc/debian_chroot ]] && HOST="($(< /etc/debian_chroot))"
   if [[ -n "$DISPLAY" ]]; then
     HOST="${HOST}%{%F{blue}%}@"
@@ -96,7 +96,7 @@ prompt_context() {
 
   case "$(_connection)" in
     ssh)
-      HOST+="%{%F{57}%}%m"
+      HOST+="%{%F{10}%}%m"
       ;;
     su)
       HOST+="%{%F{97}%}%m"
