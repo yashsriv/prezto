@@ -86,7 +86,6 @@ _connection() {
 }
 prompt_context() {
   HOST=""
-  HOST="($(hostname))"
   [[ -r /etc/debian_chroot ]] && HOST="($(< /etc/debian_chroot))"
   if [[ -n "$DISPLAY" ]]; then
     HOST="${HOST}%{%F{blue}%}@"
@@ -112,9 +111,9 @@ prompt_context() {
   if [[ $(tput cols) -ge 125 ]]; then
     if [[ "$USER" != "$DEFAULT_USER" || -n "$SSH_CLIENT" ]]; then
       if [[ $UID -eq 0 ]]; then
-        prompt_segment default black "%(!.%{%F{red,bold}%}.)%n$HOST"
+        prompt_segment default 16 "%(!.%{%F{red,bold}%}.)%n$HOST"
       else
-        prompt_segment cyan black "%(!.%{%F{red,bold}%}.)%n$HOST"
+        prompt_segment 154 16 "%(!.%{%F{red,bold}%}.)%n$HOST"
       fi
     fi
   fi
@@ -122,7 +121,11 @@ prompt_context() {
 # Git: branch/detached head, dirty status
 prompt_git() {
   # Must use Powerline font, for \uE0A0 to render.
-  GIT_PROMPT_PREFIX="\uE0A0 "
+  if [[ -n "$SSH_CLIENT" ]]; then
+    GIT_PROMPT_PREFIX=""
+  else
+    GIT_PROMPT_PREFIX="\uE0A0 "
+  fi
   if $(git rev-parse --is-inside-work-tree >/dev/null 2>&1); then
     BRANCH=$(git branch 2> /dev/null | sed -e '/^[^*]/d' -e 's/* \(.*\)/\1/')
     STATUS=$(git status 2>&1 | tee)
@@ -156,23 +159,23 @@ prompt_git() {
       BRANCH=$BRANCH[0,6]
     fi
     if [[ "$ahead" == "0" ]]; then
-      prompt_segment yellow black "$GIT_PROMPT_PREFIX$BRANCH$bits"
+      prompt_segment 226 16 "$GIT_PROMPT_PREFIX$BRANCH$bits"
     elif [[ ! "${bits}" == "" ]]; then
-      prompt_segment 9 black "$GIT_PROMPT_PREFIX$BRANCH$bits"
+      prompt_segment 214 16 "$GIT_PROMPT_PREFIX$BRANCH$bits"
     else
-      prompt_segment green black "$GIT_PROMPT_PREFIX$BRANCH$bits"
+      prompt_segment 154 16 "$GIT_PROMPT_PREFIX$BRANCH$bits"
     fi
   fi
 }
 # Dir: current working directory
 prompt_dir() {
-  prompt_segment black brblue '%c'
+  prompt_segment 234 154 '%c'
 }
 
 # Virtualenv: current working virtualenv
 prompt_virtualenv() {
   local virtualenv_path="$VIRTUAL_ENV"
-  if [[ -n $virtualenv_path ]]; then
+  if [[ -n $virtualenv_path && -n $VIRTUAL_ENV_DISABLE_PROMPT ]]; then
     prompt_segment blue black "(`basename $virtualenv_path`)"
   fi
 }
@@ -189,7 +192,7 @@ prompt_status() {
   [[ $UID -eq 0 ]] && symbols+="%{%F{yellow}%}⚡ "
   local -i detached=0
   detached+=$(tmux list-sessions 2> /dev/null | \grep -cv 'attached')
-  (( detached > 0 )) && symbols+="%{%F{brgreen}%}${detached}⑂ "
+  (( detached > 0 )) && symbols+="%{%F{154}%}${detached}⑂ "
   if (( r = $(jobs -r | wc -l) )); then
     symbols+="%{%F{cyan}%}${r}⚙ "
   fi
@@ -198,7 +201,7 @@ prompt_status() {
   fi
 
   if [[ $(tput cols) -ge 125 ]]; then
-    [[ -n "$symbols" ]] && prompt_segment black black "$symbols"
+    [[ -n "$symbols" ]] && prompt_segment 234 234 "$symbols"
   fi
 }
 
@@ -232,35 +235,53 @@ function battery_level_ssh() {
   fi
   echo %{$fg[$color]%}$(battery_level)%%
 }
+function battery_is_charging() {
+  if [[ $(acpi 2&>/dev/null | grep -c '^Battery.*Discharging') -gt 0 ]]; then
+    symbol=''
+    if [ $(battery_level) -ge 40 ]; then
+      color=green
+      symbol="\u2615"
+    elif [ $(battery_level) -ge 20 ]; then
+      color=yellow
+      symbol="\u231B"
+    else
+      color=red
+      symbol="\u26A0"
+    fi
+  else
+    symbol="\u26A1"
+    color=magenta
+  fi
+  echo %{$fg_bold[$color]%}$symbol
+}
+
 # Battery
 prompt_battery() {
-  if (( $+commands[acpi] )); then
+  if [[ -n "$SSH_CLIENT" ]]; then
+    battery_level_ssh
+  else
     if [[ $(acpi 2&>/dev/null | grep -c '^Battery.*Discharging') -gt 0 ]]; then
       if [ $(battery_level) -ge 40 ]; then
-        color=green
+        color=118
         symbol="\u2615"
       elif [ $(battery_level) -ge 20 ]; then
-        color=yellow
+        color=208
         symbol="\u231B"
       else
-        color=red
+        color=196
         symbol="\u26A0"
       fi
     else
       symbol="\u26A1"
-      color=blue
+      color=38
     fi
     if [[ $(tput cols) -gt 125 ]]; then
-      prompt_segment_backwards $color black "$symbol $(battery_charge)"
+      prompt_segment_backwards $color 234 "$symbol $(battery_charge)"
     elif [[ $(battery_level) -ge 20 ]]; then
-      prompt_segment_backwards $color black "$symbol"
+      prompt_segment_backwards $color 234 "$symbol"
     else
-      prompt_segment_backwards $color black "$symbol $(battery_level)%%"
+      prompt_segment_backwards $color 234 "$symbol $(battery_level)%%"
     fi
-  else
-    color=green
-    symbol="\u2615"
-    prompt_segment_backwards $color black "$symbol"
   fi
 }
 
@@ -309,9 +330,9 @@ prompt_time() {
   fi
 
   if [[ $(tput cols) -gt 125 ]]; then
-    prompt_segment_backwards black brmagenta " $symbols  %*"
+    prompt_segment_backwards 234 197 " $symbols  %*"
   else
-    prompt_segment_backwards black brmagenta " $symbols  "
+    prompt_segment_backwards 234 197 " $symbols  "
   fi
 }
 
@@ -326,7 +347,7 @@ prompt_cpu() {
   lp_cpu_load=${lp_cpu_load#0}    # Remove leading '0', again (ex: 0.09)
   local -i load=${lp_cpu_load:-0}/$cpunum
   if (( load > 65 )); then
-    prompt_segment_backwards black default "$symbol ⌂ ${load}%%"
+    prompt_segment_backwards 234 default "$symbol ⌂ ${load}%%"
   fi
 }
 
@@ -339,13 +360,8 @@ prompt_harlequin_right() {
 }
 
 prompt_harlequin_precmd() {
-  print -Pn "\e]0;%c\a"
   PROMPT='%{%f%b%k%}$(prompt_harlequin_main) '
   RPROMPT='%{%f%b%k%}$(prompt_harlequin_right)'
-}
-
-prompt_harlequin_preexec() {
-  print -Pn "\e]0;$1\a"
 }
 
 prompt_harlequin_setup() {
@@ -354,6 +370,5 @@ prompt_harlequin_setup() {
   prompt_opts=(cr subst percent)
 
   add-zsh-hook precmd prompt_harlequin_precmd
-  add-zsh-hook preexec prompt_harlequin_preexec
 }
 prompt_harlequin_setup "$@"
