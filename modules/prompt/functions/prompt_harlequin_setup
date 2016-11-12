@@ -122,11 +122,7 @@ prompt_context() {
 # Git: branch/detached head, dirty status
 prompt_git() {
   # Must use Powerline font, for \uE0A0 to render.
-  if [[ -n "$SSH_CLIENT" ]]; then
-    GIT_PROMPT_PREFIX=""
-  else
-    GIT_PROMPT_PREFIX="\uE0A0 "
-  fi
+  GIT_PROMPT_PREFIX="\uE0A0 "
   if $(git rev-parse --is-inside-work-tree >/dev/null 2>&1); then
     BRANCH=$(git branch 2> /dev/null | sed -e '/^[^*]/d' -e 's/* \(.*\)/\1/')
     STATUS=$(git status 2>&1 | tee)
@@ -236,36 +232,9 @@ function battery_level_ssh() {
   fi
   echo %{$fg[$color]%}$(battery_level)%%
 }
-function battery_is_charging() {
-  if (( $+commands[acpi] )); then
-    if [[ $(acpi 2&>/dev/null | grep -c '^Battery.*Discharging') -gt 0 ]]; then
-      symbol=''
-      if [ $(battery_level) -ge 40 ]; then
-        color=green
-        symbol="\u2615"
-      elif [ $(battery_level) -ge 20 ]; then
-        color=yellow
-        symbol="\u231B"
-      else
-        color=red
-        symbol="\u26A0"
-      fi
-    else
-      symbol="\u26A1"
-      color=magenta
-    fi
-  else
-    color=green
-    symbol="\u2615"
-  fi
-  echo %{$fg_bold[$color]%}$symbol
-}
-
 # Battery
 prompt_battery() {
-  if [[ -n "$SSH_CLIENT" ]]; then
-    battery_level_ssh
-  else
+  if (( $+commands[acpi] )); then
     if [[ $(acpi 2&>/dev/null | grep -c '^Battery.*Discharging') -gt 0 ]]; then
       if [ $(battery_level) -ge 40 ]; then
         color=green
@@ -281,13 +250,16 @@ prompt_battery() {
       symbol="\u26A1"
       color=blue
     fi
-    if [[ $(tput cols) -gt 125 ]]; then
-      prompt_segment_backwards $color black "$symbol $(battery_charge)"
-    elif [[ $(battery_level) -ge 20 ]]; then
-      prompt_segment_backwards $color black "$symbol"
-    else
-      prompt_segment_backwards $color black "$symbol $(battery_level)%%"
-    fi
+  else
+    color=green
+    symbol="\u2615"
+  fi
+  if [[ $(tput cols) -gt 125 ]]; then
+    prompt_segment_backwards $color black "$symbol $(battery_charge)"
+  elif [[ $(battery_level) -ge 20 ]]; then
+    prompt_segment_backwards $color black "$symbol"
+  else
+    prompt_segment_backwards $color black "$symbol $(battery_level)%%"
   fi
 }
 
