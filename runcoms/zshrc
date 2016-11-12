@@ -5,9 +5,114 @@
 #   Sorin Ionescu <sorin.ionescu@gmail.com>
 #
 
+[[ $- != *i* ]] && return
+
 # Source Prezto.
 if [[ -s "${ZDOTDIR:-$HOME}/.zprezto/init.zsh" ]]; then
   source "${ZDOTDIR:-$HOME}/.zprezto/init.zsh"
 fi
 
-# Customize to your needs...
+# Prevent error on nomatch over ssh
+unsetopt nomatch
+
+# Rehash on installing a package
+zstyle ':completion:*' rehash true
+
+# history beginning search
+autoload -U up-line-or-beginning-search
+autoload -U down-line-or-beginning-search
+zle -N up-line-or-beginning-search
+zle -N down-line-or-beginning-search
+bindkey "$terminfo[kcuu1]" up-line-or-beginning-search
+bindkey "$terminfo[kcud1]" down-line-or-beginning-search
+
+# cd = pushd
+setopt AUTO_PUSHD
+
+# 2 escape is sudo
+sudo-command-line() {
+    [[ -z $BUFFER ]] && zle up-history
+    if [[ $BUFFER == sudo\ * ]]; then
+        LBUFFER="${LBUFFER#sudo }"
+    elif [[ $BUFFER == $EDITOR\ * ]]; then
+        LBUFFER="${LBUFFER#$EDITOR }"
+        LBUFFER="sudoedit $LBUFFER"
+    elif [[ $BUFFER == sudoedit\ * ]]; then
+        LBUFFER="${LBUFFER#sudoedit }"
+        LBUFFER="$EDITOR $LBUFFER"
+    else
+        LBUFFER="sudo $LBUFFER"
+    fi
+}
+zle -N sudo-command-line
+# Defined shortcut keys: [Esc] [Esc]
+bindkey "^[^[" sudo-command-line
+
+# Default editor for editing files over ssh and without
+if [[ -n $SSH_CONNECTION ]]; then
+  export EDITOR='vim'
+fi
+
+HISTSIZE=200000
+SAVEHIST=10000
+# Completion Red dots
+#unsetopt CORRECT
+#expand-or-complete-with-dots() {      # This bunch of code displays red dots when autocompleting
+  #echo -n "\e[31m......\e[0m"         # a command with the tab key, "Oh-my-zsh"-style.
+  #zle expand-or-complete
+  #zle redisplay
+#}
+#zle -N expand-or-complete-with-dots
+#bindkey "^I" expand-or-complete-with-dots
+
+# PATHS
+# Aliases
+
+source ~/.local.zshrc
+# Execute previous command with sudo permissions
+alias wtf='sudo $(history -p !!)'
+# I accidentally type .. instead of cd ..
+alias ..='cd ..'
+# This is for finding out what is taking so much space on your drives!
+alias diskspace='du -S | sort -n -r |more'
+# Shortcut for git upload
+alias gpom='git push origin master'
+# IP Address ( actual and local)
+alias ipa='echo -n "Global: " && dig +short myip.opendns.com @resolver1.opendns.com && echo -n " Local: " && ip route get 8.8.8.8 | head -1 | cut -d " " -f7'
+# Use python3 instead of python2
+alias python='python3 '
+# Colored ghci
+alias ghci='ghci --colour'
+# No spellcheck on rm
+alias rm='nocorrect rm'
+# Weather
+alias weather='curl wttr.in/kanpur'
+# Better cp
+if (( $+commands[rsync] )); then
+  alias cp='rsync -ah --progress'
+fi
+
+# Autostart in tmux
+if (( $+commands[tmux] )); then
+  case $(tty) in
+    /dev/tty[0-9]*)
+      ;;
+    *)
+      if [[ -z "$TMUX" ]]; then
+        tmux new-session && exit
+      fi
+      ;;
+  esac
+fi
+
+# Startup Message
+if (( $+commands[neofetch] )); then
+  neofetch
+  echo ''
+elif (( $+commands[screenfetch] )); then
+  screenfetch
+  echo ''
+elif (( $+commands[archey] )); then
+  archey
+  echo ''
+fi
