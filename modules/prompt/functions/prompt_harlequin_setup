@@ -1,0 +1,381 @@
+# vim:ft=zsh ts=2 sw=2 sts=2
+# Heavily inspired by nojhan/liquidprompt and agnoster
+
+### Segment drawing
+# A few utility functions to make it easy and re-usable to draw segmented prompts
+
+CURRENT_BG='NONE'
+CURRENT_BGR='NONE'
+
+SEGMENT_SEPARATOR="\ue0b0"
+SEGMENT_SEPARATOR_BACKWARDS="\ue0b2"
+
+# Begin a segment
+# Takes two arguments, background and foreground. Both can be omitted,
+# rendering default background/foreground.
+prompt_segment() {
+  local bg fg
+  [[ -n $1 ]] && bg="%K{$1}" || bg="%k"
+  [[ -n $2 ]] && fg="%F{$2}" || fg="%f"
+  if [[ $CURRENT_BG != 'NONE' && $1 != $CURRENT_BG ]]; then
+    echo -n " %{$bg%F{$CURRENT_BG}%}$SEGMENT_SEPARATOR%{$fg%} "
+  else
+    echo -n "%{$bg%}%{$fg%} "
+  fi
+  CURRENT_BG=$1
+  [[ -n $3 ]] && echo -n $3
+}
+
+# End the prompt, closing any open segments
+prompt_end() {
+  if [[ -n $CURRENT_BG ]]; then
+    echo -n " %{%k%F{$CURRENT_BG}%}$SEGMENT_SEPARATOR"
+  else
+    echo -n "%{%k%}"
+  fi
+  echo -n "%{%f%}"
+  CURRENT_BG=''
+}
+
+# Rprompt Additions
+# Begin a backwards segment
+# Takes two arguments, background and foreground. Both can be omitted,
+# rendering default background/foreground.
+prompt_segment_backwards() {
+  local bg fg
+  [[ -n $1 ]] && bg="%K{$1}" || bg="%k"
+  [[ -n $2 ]] && fg="%F{$2}" || fg="%f"
+  if [[ $CURRENT_BGR != 'NONE' && $1 != $CURRENT_BGR ]]; then
+    echo -n " %{%F{$1}%K{$CURRENT_BGR}%}$SEGMENT_SEPARATOR_BACKWARDS%{$fg$bg%}"
+  else
+    echo -n "%{%F{$1}%k%}$SEGMENT_SEPARATOR_BACKWARDS%{$bg%}%{$fg%} "
+  fi
+  CURRENT_BGR=$1
+  [[ -n $3 ]] && echo -n $3
+}
+
+# End the backward prompt, closing any open segments
+prompt_end_backwards() {
+  if [[ -n $CURRENT_BGR ]]; then
+    echo -n "%{%k%F{$CURRENT_BGR}%}"
+  else
+    echo -n "%{%k%}"
+  fi
+  echo -n "%{%f%}"
+  CURRENT_BGR=''
+}
+
+### Prompt components
+# Each component will draw itself, and hide itself if no information needs to be shown
+
+# Context: user@hostname (who am I and where am I)
+_connection() {
+  if [[ -n "${SSH_CLIENT-}${SSH2_CLIENT-}${SSH_TTY-}" ]]; then
+    echo ssh
+  else
+    local whoami="$(LANG=C who am i)"
+    local sess_parent="$(ps -o comm= -p $PPID 2> /dev/null)"
+    if [[ x"$whoami" != *'('* || x"$whoami" = *'(:'* || x"$whoami" = *'(tmux'* ]]; then
+      echo lcl  # Local
+    elif [[ "$sess_parent" = "su" || "$sess_parent" = "sudo" ]]; then
+      echo su   # Remote su/sudo
+    else
+      echo tel  # Telnet
+    fi
+  fi
+}
+prompt_context() {
+  HOST=""
+  HOST="($(hostname))"
+  [[ -r /etc/debian_chroot ]] && HOST="($(< /etc/debian_chroot))"
+  if [[ -n "$DISPLAY" ]]; then
+    HOST="${HOST}%{%F{blue}%}@"
+  else
+    HOST="${HOST}@"
+  fi
+
+  case "$(_connection)" in
+    ssh)
+      HOST+="%{%F{57}%}%m"
+      ;;
+    su)
+      HOST+="%{%F{97}%}%m"
+      ;;
+    tel)
+      HOST+="%{%F{red}%}%m"
+      ;;
+    *)
+      HOST=""
+      ;;
+  esac
+
+  if [[ $(tput cols) -ge 125 ]]; then
+    if [[ "$USER" != "$DEFAULT_USER" || -n "$SSH_CLIENT" ]]; then
+      if [[ $UID -eq 0 ]]; then
+        prompt_segment default black "%(!.%{%F{red,bold}%}.)%n$HOST"
+      else
+        prompt_segment cyan black "%(!.%{%F{red,bold}%}.)%n$HOST"
+      fi
+    fi
+  fi
+}
+# Git: branch/detached head, dirty status
+prompt_git() {
+  # Must use Powerline font, for \uE0A0 to render.
+  if [[ -n "$SSH_CLIENT" ]]; then
+    GIT_PROMPT_PREFIX=""
+  else
+    GIT_PROMPT_PREFIX="\uE0A0 "
+  fi
+  if $(git rev-parse --is-inside-work-tree >/dev/null 2>&1); then
+    BRANCH=$(git branch 2> /dev/null | sed -e '/^[^*]/d' -e 's/* \(.*\)/\1/')
+    STATUS=$(git status 2>&1 | tee)
+    dirty=$(echo -n "$STATUS" 2> /dev/null | grep "modified:" &> /dev/null; echo "$?")
+    untracked=$(echo -n "$STATUS" 2> /dev/null | grep "Untracked files" &> /dev/null; echo "$?")
+    ahead=$(echo -n "$STATUS" 2> /dev/null | grep "Your branch is ahead of" &> /dev/null; echo "$?")
+    newfile=$(echo -n "$STATUS" 2> /dev/null | grep "new file:" &> /dev/null; echo "$?")
+    renamed=$(echo -n "$STATUS" 2> /dev/null | grep "renamed:" &> /dev/null; echo "$?")
+    deleted=$(echo -n "$STATUS" 2> /dev/null | grep "deleted:" &> /dev/null; echo "$?")
+    bits=""
+    if [[ "$renamed" == "0" ]]; then
+      bits+=">"
+    fi
+    if [[ "$ahead" == "0" ]]; then
+      bits+="*"
+    fi
+    if [[ "$newfile" == "0" ]]; then
+      bits+="+"
+    fi
+    if [[ "$untracked" == "0" ]]; then
+      bits+="?"
+    fi
+    if [[ "$deleted" == "0" ]]; then
+      bits+="x"
+    fi
+    if [[ "$dirty" == "0" ]]; then
+      bits+="!"
+    fi
+
+    if [[ $(tput cols) -lt 125 ]]; then
+      BRANCH=$BRANCH[0,6]
+    fi
+    if [[ "$ahead" == "0" ]]; then
+      prompt_segment yellow black "$GIT_PROMPT_PREFIX$BRANCH$bits"
+    elif [[ ! "${bits}" == "" ]]; then
+      prompt_segment 9 black "$GIT_PROMPT_PREFIX$BRANCH$bits"
+    else
+      prompt_segment green black "$GIT_PROMPT_PREFIX$BRANCH$bits"
+    fi
+  fi
+}
+# Dir: current working directory
+prompt_dir() {
+  prompt_segment black brblue '%c'
+}
+
+# Virtualenv: current working virtualenv
+prompt_virtualenv() {
+  local virtualenv_path="$VIRTUAL_ENV"
+  if [[ -n $virtualenv_path ]]; then
+    prompt_segment blue black "(`basename $virtualenv_path`)"
+  fi
+}
+
+# Status:
+# - was there an error
+# - am I root
+# - are there background jobs?
+prompt_status() {
+  local symbols
+  symbols=""
+  local -i r s
+  [[ $RETVAL -ne 0 ]] && symbols+="%{%F{red}%}✘ "
+  [[ $UID -eq 0 ]] && symbols+="%{%F{yellow}%}⚡ "
+  local -i detached=0
+  detached+=$(tmux list-sessions 2> /dev/null | \grep -cv 'attached')
+  (( detached > 0 )) && symbols+="%{%F{brgreen}%}${detached}⑂ "
+  if (( r = $(jobs -r | wc -l) )); then
+    symbols+="%{%F{cyan}%}${r}⚙ "
+  fi
+  if (( s = $(jobs -s | wc -l) )); then
+    symbols+="%{%F{yellow}%}${s}💤"
+  fi
+
+  if [[ $(tput cols) -ge 125 ]]; then
+    [[ -n "$symbols" ]] && prompt_segment black black "$symbols"
+  fi
+}
+
+
+## Main prompt
+prompt_harlequin_main() {
+  RETVAL=$?
+  CURRENT_BG='NONE'
+  prompt_status
+  prompt_virtualenv
+  prompt_context
+  prompt_dir
+  prompt_git
+  prompt_end
+}
+
+###RPROMPT Components
+function battery_charge {
+  echo `~/dotfiles/zsh.sh` 2>/dev/null
+}
+function battery_level {
+  echo `acpi | grep -o "[0-9]*%" | sed 's/%$//'`
+}
+function battery_level_ssh() {
+  if [ $(battery_level) -ge 40 ]; then
+    color=green
+  elif [ $(battery_level) -ge 20 ]; then
+    color=yellow
+  else
+    color=red
+  fi
+  echo %{$fg[$color]%}$(battery_level)%%
+}
+function battery_is_charging() {
+  if [[ $(acpi 2&>/dev/null | grep -c '^Battery.*Discharging') -gt 0 ]]; then
+    symbol=''
+    if [ $(battery_level) -ge 40 ]; then
+      color=green
+      symbol="\u2615"
+    elif [ $(battery_level) -ge 20 ]; then
+      color=yellow
+      symbol="\u231B"
+    else
+      color=red
+      symbol="\u26A0"
+    fi
+  else
+    symbol="\u26A1"
+    color=magenta
+  fi
+  echo %{$fg_bold[$color]%}$symbol
+}
+
+# Battery
+prompt_battery() {
+  if [[ -n "$SSH_CLIENT" ]]; then
+    battery_level_ssh
+  else
+    if [[ $(acpi 2&>/dev/null | grep -c '^Battery.*Discharging') -gt 0 ]]; then
+      if [ $(battery_level) -ge 40 ]; then
+        color=green
+        symbol="\u2615"
+      elif [ $(battery_level) -ge 20 ]; then
+        color=yellow
+        symbol="\u231B"
+      else
+        color=red
+        symbol="\u26A0"
+      fi
+    else
+      symbol="\u26A1"
+      color=blue
+    fi
+    if [[ $(tput cols) -gt 125 ]]; then
+      prompt_segment_backwards $color black "$symbol $(battery_charge)"
+    elif [[ $(battery_level) -ge 20 ]]; then
+      prompt_segment_backwards $color black "$symbol"
+    else
+      prompt_segment_backwards $color black "$symbol $(battery_level)%%"
+    fi
+  fi
+}
+
+# Time:
+# - Clock Symbol
+# - Current time
+# ⌚  U+0231A  WATCH
+# ⌛  U+0231B  HOURGLASS
+# ⏰  U+023F0  ALARM CLOCK
+# ⏱  U+023F1  STOPWATCH
+# ⏳  U+023F3  HOURGLASS WITH FLOWING SAND
+# ⧖  U+029D6  WHITE HOURGLASS
+# ⧗  U+029D7  BLACK HOURGLASS
+
+# 🕐  U+1F550  CLOCK FACE ONE OCLOCK
+# 🕜  U+1F55C  CLOCK FACE ONE-THIRTY
+# 🕑  U+1F551  CLOCK FACE TWO OCLOCK
+# 🕝  U+1F55D  CLOCK FACE TWO-THIRTY
+# 🕒  U+1F552  CLOCK FACE THREE OCLOCK
+# 🕞  U+1F55E  CLOCK FACE THREE-THIRTY
+# 🕓  U+1F553  CLOCK FACE FOUR OCLOCK
+# 🕟  U+1F55F  CLOCK FACE FOUR-THIRTY
+# 🕔  U+1F554  CLOCK FACE FIVE OCLOCK
+# 🕠  U+1F560  CLOCK FACE FIVE-THIRTY
+# 🕕  U+1F555  CLOCK FACE SIX OCLOCK
+# 🕡  U+1F561  CLOCK FACE SIX-THIRTY
+# 🕖  U+1F556  CLOCK FACE SEVEN OCLOCK
+# 🕢  U+1F562  CLOCK FACE SEVEN-THIRTY
+# 🕗  U+1F557  CLOCK FACE EIGHT OCLOCK
+# 🕣  U+1F563  CLOCK FACE EIGHT-THIRTY
+# 🕘  U+1F558  CLOCK FACE NINE OCLOCK
+# 🕤  U+1F564  CLOCK FACE NINE-THIRTY
+# 🕙  U+1F559  CLOCK FACE TEN OCLOCK
+# 🕥  U+1F565  CLOCK FACE TEN-THIRTY
+# 🕚  U+1F55A  CLOCK FACE ELEVEN OCLOCK
+# 🕦  U+1F566  CLOCK FACE ELEVEN-THIRTY
+# 🕛  U+1F55B  CLOCK FACE TWELVE OCLOCK
+# 🕧  U+1F567  CLOCK FACE TWELVE-THIRTY
+prompt_time() {
+  local symbols
+  symbols=""
+  if [[ -n $SSH_CLIENT ]]; then
+    symbols+=""
+  else
+    symbols+=⏰
+  fi
+
+  if [[ $(tput cols) -gt 125 ]]; then
+    prompt_segment_backwards black brmagenta " $symbols  %*"
+  else
+    prompt_segment_backwards black brmagenta " $symbols  "
+  fi
+}
+
+# Cpu load
+prompt_cpu() {
+  local lp_cpu_load
+  local eol
+  read lp_cpu_load eol < /proc/loadavg
+  cpunum=$( nproc 2>/dev/null || \grep -c '^[Pp]rocessor' /proc/cpuinfo )
+  lp_cpu_load=${lp_cpu_load/./}   # Remove '.'
+  lp_cpu_load=${lp_cpu_load#0}    # Remove leading '0'
+  lp_cpu_load=${lp_cpu_load#0}    # Remove leading '0', again (ex: 0.09)
+  local -i load=${lp_cpu_load:-0}/$cpunum
+  if (( load > 65 )); then
+    prompt_segment_backwards black default "$symbol ⌂ ${load}%%"
+  fi
+}
+
+## R prompt
+prompt_harlequin_right() {
+  prompt_cpu
+  prompt_battery
+  prompt_time
+  prompt_end_backwards
+}
+
+prompt_harlequin_precmd() {
+  print -Pn "\e]0;%c\a"
+  PROMPT='%{%f%b%k%}$(prompt_harlequin_main) '
+  RPROMPT='%{%f%b%k%}$(prompt_harlequin_right)'
+}
+
+prompt_harlequin_preexec() {
+  print -Pn "\e]0;$1\a"
+}
+
+prompt_harlequin_setup() {
+  autoload -Uz add-zsh-hook
+
+  prompt_opts=(cr subst percent)
+
+  add-zsh-hook precmd prompt_harlequin_precmd
+  add-zsh-hook preexec prompt_harlequin_preexec
+}
+prompt_harlequin_setup "$@"
