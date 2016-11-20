@@ -69,7 +69,7 @@ alias diskspace='du -S | sort -n -r |more'
 # Shortcut for git upload
 alias gpom='git push origin master'
 # IP Address ( actual and local)
-alias ipa='echo -n "Global: " && dig +short myip.opendns.com @resolver1.opendns.com && echo -n " Local: " && ip route get 8.8.8.8 | head -1 | cut -d " " -f7'
+alias ipa='echo -n "Global: " && dig +short myip.opendns.com @resolver1.opendns.com && echo -n " Local: " && ip route get 8.8.8.8 | head -1 | tr -s " " | cut -d " " -f7'
 # Use python3 instead of python2
 alias python='python3 '
 # Colored ghci
