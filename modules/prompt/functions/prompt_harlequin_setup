@@ -220,7 +220,7 @@ function battery_charge {
   echo `~/dotfiles/zsh.sh` 2>/dev/null
 }
 function battery_level {
-  echo `acpi | grep -o "[0-9]*%" | sed 's/%$//'`
+  echo `acpi | grep -o "[0-9]*%" | sed 's/%$//' | tail -n 1`
 }
 function battery_level_ssh() {
   if [ $(battery_level) -ge 40 ]; then
@@ -309,9 +309,9 @@ prompt_time() {
   fi
 
   if [[ $(tput cols) -gt 125 ]]; then
-    prompt_segment_backwards black brmagenta " $symbols  %*"
+    prompt_segment_backwards black brmagenta " $symbols %* "
   else
-    prompt_segment_backwards black brmagenta " $symbols  "
+    prompt_segment_backwards black brmagenta " $symbols "
   fi
 }
 

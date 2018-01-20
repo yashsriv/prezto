@@ -72,8 +72,6 @@ alias gpom='git push origin master'
 alias ipa='echo -n "Global: " && dig +short myip.opendns.com @resolver1.opendns.com && echo -n " Local: " && ip route get 8.8.8.8 | head -1 | tr -s " " | cut -d " " -f7'
 # Use python3 instead of python2
 alias python='python3 '
-# Colored ghci
-alias ghci='ghci --colour'
 # No spellcheck on rm
 alias rm='nocorrect rm'
 # Weather
@@ -89,7 +87,7 @@ if (( $+commands[tmux] )); then
     /dev/tty[0-9]*)
       ;;
     *)
-      if [[ -z "$TMUX" ]]; then
+      if [[ -z "$TMUX" && $TERM != "eterm-color" ]]; then
         tmux new-session && exit
       fi
       ;;
@@ -98,7 +96,7 @@ fi
 
 # Startup Message
 if (( $+commands[neofetch] )); then
-  neofetch
+  neofetch --image ascii
   echo ''
 elif (( $+commands[screenfetch] )); then
   screenfetch

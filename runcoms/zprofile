@@ -12,19 +12,22 @@
 if [[ "$OSTYPE" == darwin* ]]; then
   export BROWSER='open'
 fi
+#export BROWSER='chromium'
 export BROWSER='firefox'
 #
 # Editors
 #
-
-if (( $+commands[nvim] )); then
+if (( $+commands[emacsclient] )); then
+  export EDITOR='emacsclient -t -a vim'
+  export VISUAL='emacsclient -c -a nvim'
+elif (( $+commands[nvim] )); then
   export EDITOR='nvim'
   export VISUAL='nvim'
 else
   export EDITOR='vim'
   export VISUAL='vim'
 fi
-export PAGER='more'
+export PAGER='less'
 if (( $+commands[android-studio] )); then
   export ANDROID_HOME='/opt/android-sdk'
 fi
@@ -49,17 +52,23 @@ typeset -gU cdpath fpath mailpath path
 # )
 
 # Set the list of directories that Zsh searches for programs.
+export GOPATH=/home/yash/git/go
+export RUST_SRC_PATH=$HOME/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/src/ 
 path=(
   /usr/local/{bin,sbin,lib,games}
   /usr/{bin,games}
   /bin
   ~/bin
   .
+  ./node_modules/.bin
+  $GOPATH/bin
+  $HOME/.cargo/bin
+  $HOME/.cabal/bin
   $path
 )
 if (( $+commands[ruby] )); then
   path=(
-    $(ruby -rubygems -e "puts Gem.user_dir")/bin
+    $(ruby -e "puts Gem.user_dir")/bin
     $path
   )
 fi
