@@ -12,6 +12,10 @@ if [[ -s "${ZDOTDIR:-$HOME}/.zprezto/init.zsh" ]]; then
   source "${ZDOTDIR:-$HOME}/.zprezto/init.zsh"
 fi
 
+# Source nvm
+#source /usr/share/nvm/init-nvm.sh
+#nvm use default
+
 # Prevent error on nomatch over ssh
 unsetopt nomatch
 
@@ -19,12 +23,12 @@ unsetopt nomatch
 zstyle ':completion:*' rehash true
 
 # history beginning search
-autoload -U up-line-or-beginning-search
-autoload -U down-line-or-beginning-search
-zle -N up-line-or-beginning-search
-zle -N down-line-or-beginning-search
-bindkey "$terminfo[kcuu1]" up-line-or-beginning-search
-bindkey "$terminfo[kcud1]" down-line-or-beginning-search
+#autoload -U up-line-or-beginning-search
+#autoload -U down-line-or-beginning-search
+#zle -N up-line-or-beginning-search
+#zle -N down-line-or-beginning-search
+#bindkey "$terminfo[kcuu1]" up-line-or-beginning-search
+#bindkey "$terminfo[kcud1]" down-line-or-beginning-search
 
 # cd = pushd
 setopt AUTO_PUSHD
@@ -70,8 +74,6 @@ alias diskspace='du -S | sort -n -r |more'
 alias gpom='git push origin master'
 # IP Address ( actual and local)
 alias ipa='echo -n "Global: " && dig +short myip.opendns.com @resolver1.opendns.com && echo -n " Local: " && ip route get 8.8.8.8 | head -1 | tr -s " " | cut -d " " -f7'
-# Use python3 instead of python2
-alias python='python3 '
 # No spellcheck on rm
 alias rm='nocorrect rm'
 # Weather
@@ -80,6 +82,23 @@ alias weather='curl wttr.in/kanpur'
 if (( $+commands[rsync] )); then
   alias cp='rsync -ah --progress'
 fi
+# Better ls
+if (( $+commands[exa] )); then
+  alias ls='exa --group-directories-first'
+fi
+# Better cat
+if (( $+commands[bat] )); then
+  alias cat='bat'
+fi
+# Better grep
+if (( $+commands[rg] )); then
+  alias grep='rg'
+fi
+# emacs in terminal
+if (( $+commands[emacs] )); then
+  alias ec='emacsclient -nw'
+fi
+
 
 # Autostart in tmux
 if (( $+commands[tmux] )); then
@@ -105,3 +124,5 @@ elif (( $+commands[archey] )); then
   archey
   echo ''
 fi
+
+eval "$(nodenv init -)"

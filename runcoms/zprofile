@@ -14,6 +14,7 @@ if [[ "$OSTYPE" == darwin* ]]; then
 fi
 #export BROWSER='chromium'
 export BROWSER='firefox'
+#export BROWSER='vivaldi-stable'
 #
 # Editors
 #
@@ -29,7 +30,9 @@ else
 fi
 export PAGER='less'
 if (( $+commands[android-studio] )); then
-  export ANDROID_HOME='/opt/android-sdk'
+  export ANDROID_HOME='/home/yash/Android/Sdk'
+  export ANDROID_TOOLS='/home/yash/Android/Sdk/tools/'
+  export ANDROID_PLATFORM_TOOLS='/home/yash/Android/Sdk/platform-tools/'
 fi
 #
 # Language
@@ -51,9 +54,10 @@ typeset -gU cdpath fpath mailpath path
 #   $cdpath
 # )
 
+RUST_SRC_PATH=$(rustc --print sysroot)/lib/rustlib/src/rust/src
+
 # Set the list of directories that Zsh searches for programs.
 export GOPATH=/home/yash/git/go
-export RUST_SRC_PATH=$HOME/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/src/ 
 path=(
   /usr/local/{bin,sbin,lib,games}
   /usr/{bin,games}
@@ -62,8 +66,8 @@ path=(
   .
   ./node_modules/.bin
   $GOPATH/bin
-  $HOME/.cargo/bin
-  $HOME/.cabal/bin
+  ~/.local/bin
+  ~/.cargo/bin
   $path
 )
 if (( $+commands[ruby] )); then
@@ -73,6 +77,14 @@ if (( $+commands[ruby] )); then
   )
 fi
 
+if (( $+commands[android-studio] )); then
+  path=(
+    $ANDROID_HOME
+    $ANDROID_TOOLS
+    $ANDROID_PLATFORM_TOOLS
+    $path
+  )
+fi
 #
 # Less
 #
