@@ -39,6 +39,8 @@ zstyle ':prezto:load' pmodule \
   'git' \
   'pacman' \
   'syntax-highlighting' \
+  'history-substring-search' \
+  'autosuggestions' \
   'prompt'
 
 
