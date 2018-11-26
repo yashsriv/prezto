@@ -24,7 +24,7 @@
       else
         fortune 50% all 50% hackcave
       fi
-    print
+      print
+    fi
   fi
-
 } >&2
