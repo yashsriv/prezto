@@ -20,6 +20,15 @@
 # Execute code only if STDERR is bound to a TTY.
 if [[ -o INTERACTIVE && -t 2 ]]; then
 
+  # Startup Message
+  if (( $+commands[neofetch] )); then
+    neofetch
+  elif (( $+commands[screenfetch] )); then
+    screenfetch
+  elif (( $+commands[archey] )); then
+    archey
+  fi
+
   # Print a random, hopefully interesting, adage.
   if (( $+commands[fortune] )); then
     fortune -s

@@ -18,10 +18,10 @@ fi
 #
 
 if [[ -z "$EDITOR" ]]; then
-  export EDITOR='nano'
+  export EDITOR='vim'
 fi
 if [[ -z "$VISUAL" ]]; then
-  export VISUAL='nano'
+  export VISUAL='vim'
 fi
 if [[ -z "$PAGER" ]]; then
   export PAGER='less'
@@ -52,6 +52,19 @@ path=(
   $HOME/{,s}bin(N)
   /opt/{homebrew,local}/{,s}bin(N)
   /usr/local/{,s}bin(N)
+  ./node_modules/.bin
+  $path
+)
+
+if (( $+commands[ruby] )); then
+  path=(
+    $(ruby -e "puts Gem.user_dir")/bin
+    $path
+  )
+fi
+
+path=(
+  $HOME/.cargo/bin
   $path
 )
 
@@ -71,3 +84,83 @@ fi
 if [[ -z "$LESSOPEN" ]] && (( $#commands[(i)lesspipe(|.sh)] )); then
   export LESSOPEN="| /usr/bin/env $commands[(i)lesspipe(|.sh)] %s 2>&-"
 fi
+
+# Better cp
+if (( $+commands[rsync] )); then
+  alias cp='rsync -ah --progress'
+fi
+# Better ls
+if (( $+commands[eza] )); then
+  alias ls='eza --group-directories-first'
+fi
+# Better cat
+if (( $+commands[bat] )); then
+  alias cat='bat'
+fi
+# Better grep
+if (( $+commands[rg] )); then
+  alias grep='rg'
+fi
+
+# added by setup_fb4a.sh
+export ANDROID_SDK=/opt/android_sdk
+export ANDROID_NDK_REPOSITORY=/opt/android_ndk
+export ANDROID_HOME=${ANDROID_SDK}
+
+path=(
+  $path
+  ${ANDROID_SDK}/tools
+  ${ANDROID_SDK}/tools/bin
+  ${ANDROID_SDK}/platform-tools
+)
+
+path=(
+  $path
+  /Users/$USER/fbsource/xplat/third-party/yarn
+  /Users/$USER/fbsource/xplat/third-party/node/bin
+  /Users/$USER/.yarn/bin
+  /Users/$USER/.local/bin
+  #/Users/$USER/fbsource/xplat/rust/toolchain/1.88.0/basic/bin
+)
+
+alias mcat-light='buck2 run @//fbobjc/mode/messenger-catalyst-light //fbobjc/Apps/LightSpeed:LightSpeedCatalyst --config apple.codesign_type_override=distribution'
+
+alias mcat-light-build='buck2 build @//fbobjc/mode/messenger-catalyst-light //fbobjc/Apps/LightSpeed:LightSpeedCatalyst --config apple.codesign_type_override=distribution'
+
+alias mcat-light-debug='fdb --debugger=lldb buck2 run @//fbobjc/mode/messenger-catalyst-light //fbobjc/Apps/LightSpeed:LightSpeedCatalyst --config apple.codesign_type_override=distribution'
+
+alias mcat-rtc-light='buck2 run @//fbobjc/mode/messenger-catalyst //fbobjc/Apps/LightSpeed:LightSpeedCatalyst --config apple.codesign_type_override=distribution --config user.ls_is_catalyst_light_rtc_enabled=true --config user.is_catalyst_spark_enabled=false --config user.ls_prebinding_dylibs=true'
+
+alias mcat-rtc-light-build='buck2 build @//fbobjc/mode/messenger-catalyst //fbobjc/Apps/LightSpeed:LightSpeedCatalyst --config apple.codesign_type_override=distribution --config user.ls_is_catalyst_light_rtc_enabled=true --config user.is_catalyst_spark_enabled=false --config user.ls_prebinding_dylibs=true'
+
+alias mcat-rtc-light-debug='fdb --debugger=lldb buck2 run @//fbobjc/mode/messenger-catalyst //fbobjc/Apps/LightSpeed:LightSpeedCatalyst --config apple.codesign_type_override=distribution --config user.ls_is_catalyst_light_rtc_enabled=true --config user.is_catalyst_spark_enabled=false --config user.ls_prebinding_dylibs=true'
+
+alias mcat='buck2 run @//fbobjc/mode/messenger-catalyst //fbobjc/Apps/LightSpeed:LightSpeedCatalyst --config apple.codesign_type_override=distribution'
+alias mcat-build='buck2 build @//fbobjc/mode/messenger-catalyst //fbobjc/Apps/LightSpeed:LightSpeedCatalyst --config apple.codesign_type_override=distribution'
+alias mcat-debug='fdb --debugger=lldb buck2 run @//fbobjc/mode/messenger-catalyst //fbobjc/Apps/LightSpeed:LightSpeedCatalyst --config apple.codesign_type_override=distribution'
+
+export EC2_ID='i-06ace680e62fb987c'
+export EC2_HOST_ALIAS='devserver'
+
+get_ec2_name() {
+  aws ec2 describe-instances --i $EC2_ID --query 'Reservations[].Instances[].PublicDnsName' | grep amazon | tail -n 1 | tr -d '" ,'
+}
+
+start-ec2() {
+  setopt localoptions clobber
+  pending=$(aws ec2 start-instances --i $EC2_ID | grep pending);
+  while [ -n "$pending" ]
+  do
+    sleep 0.5;
+    pending=$(aws ec2 start-instances --i $EC2_ID | grep pending);
+  done
+  name=$(get_ec2_name);
+  awk_cmd="/$EC2_HOST_ALIAS/{ n=NR+1 } NR==n{ \$0=\"  HostName $name\" }1";
+  cp ~/.ssh/config ~/.ssh/config.bak;
+  awk "$awk_cmd" ~/.ssh/config.bak > ~/.ssh/config;
+  ssh $EC2_HOST_ALIAS;
+}
+
+export LLAMA_API_KEY="LLM|1361682442668958|HZkFgNKGDA1dkxDkNpMeB-eoMP0"
+
+export GOPATH="/Users/yashsriv/code/go"

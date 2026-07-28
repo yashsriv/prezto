@@ -11,3 +11,53 @@ if [[ -s "${ZDOTDIR:-$HOME}/.zprezto/init.zsh" ]]; then
 fi
 
 # Customize to your needs...
+
+# Prevent error on nomatch over ssh
+unsetopt nomatch
+
+# Rehash on installing a package
+zstyle ':completion:*' rehash true
+
+# Autosave last location while cding
+# cd = pushd
+setopt AUTO_PUSHD
+
+# 2 escape is sudo
+sudo-command-line() {
+    [[ -z $BUFFER ]] && zle up-history
+    if [[ $BUFFER == sudo\ * ]]; then
+        LBUFFER="${LBUFFER#sudo }"
+    elif [[ $BUFFER == $EDITOR\ * ]]; then
+        LBUFFER="${LBUFFER#$EDITOR }"
+        LBUFFER="sudoedit $LBUFFER"
+    elif [[ $BUFFER == sudoedit\ * ]]; then
+        LBUFFER="${LBUFFER#sudoedit }"
+        LBUFFER="$EDITOR $LBUFFER"
+    else
+        LBUFFER="sudo $LBUFFER"
+    fi
+}
+zle -N sudo-command-line
+# Defined shortcut keys: [Esc] [Esc]
+bindkey "^[^[" sudo-command-line
+
+# Bigger History
+HISTSIZE=130000
+SAVEHIST=130000
+
+# Load fb_prompt for better git/hg status experience
+local fb_prompt_file=/opt/facebook/share/scm-prompt
+if [ -f "$fb_prompt_file" ]; then
+  source "$fb_prompt_file"
+else
+  echo "couldn't find FB SCM prompt file ${fb_prompt_file}"
+fi
+
+# To customize prompt, run p10k configure or edit ~/.p10k.zsh.
+[[ -f ~/.p10k.zsh ]] && source ~/.p10k.zsh
+
+# . ~/.fbchef/environment
+#
+
+# Vite+ bin (https://viteplus.dev)
+. "$HOME/.vite-plus/env"
