@@ -23,6 +23,8 @@ if [[ -o INTERACTIVE && -t 2 ]]; then
   # Startup Message
   if (( $+commands[neofetch] )); then
     neofetch
+  elif (( $+commands[macfetch] )); then
+    macfetch
   elif (( $+commands[screenfetch] )); then
     screenfetch
   elif (( $+commands[archey] )); then
